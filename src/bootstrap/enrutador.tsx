@@ -25,7 +25,7 @@ export function Enrutador() {
       <Route exact path="/iniciar-sesion">
         <IniciarSesion />
       </Route>
-      <Route exact path="/">
+      <Route path="/">
         {pinConfigurado ? (
           <Redirect to="/iniciar-sesion" />
         ) : (

@@ -7,40 +7,49 @@ import {
   IonTabButton,
   IonTabs,
 } from '@ionic/react'
-import { ellipse, square, triangle } from 'ionicons/icons'
-import Tab1 from '../pages/Tab1'
-import Tab2 from '../pages/Tab2'
-import Tab3 from '../pages/Tab3'
+import { wallet, list, card } from 'ionicons/icons'
+import { PanelPatrimonio } from '../modulos/patrimonio/presentacion/paginas/panel-patrimonio'
+import { ListaMovimientos } from '../modulos/movimientos/presentacion/paginas/lista-movimientos'
+import { RegistrarMovimientoPage } from '../modulos/movimientos/presentacion/paginas/registrar-movimiento'
+import { ListaCuentas } from '../modulos/cuentas/presentacion/paginas/lista-cuentas'
+import { CrearCuentaPage } from '../modulos/cuentas/presentacion/paginas/crear-cuenta'
 
 export default function Tabs() {
   return (
     <IonTabs>
       <IonRouterOutlet>
-        <Route exact path="/tab1">
-          <Tab1 />
+        <Route exact path="/panel">
+          <PanelPatrimonio />
         </Route>
-        <Route exact path="/tab2">
-          <Tab2 />
+        <Route exact path="/movimientos">
+          <ListaMovimientos />
         </Route>
-        <Route path="/tab3">
-          <Tab3 />
+        <Route exact path="/movimientos/registrar">
+          <RegistrarMovimientoPage />
+        </Route>
+        <Route exact path="/cuentas">
+          <ListaCuentas />
+        </Route>
+        <Route exact path="/cuentas/crear">
+          <CrearCuentaPage />
         </Route>
         <Route exact path="/">
-          <Redirect to="/tab1" />
+          <Redirect to="/panel" />
         </Route>
       </IonRouterOutlet>
+
       <IonTabBar slot="bottom">
-        <IonTabButton tab="tab1" href="/tab1">
-          <IonIcon aria-hidden="true" icon={triangle} />
-          <IonLabel>Tab 1</IonLabel>
+        <IonTabButton tab="panel" href="/panel">
+          <IonIcon aria-hidden="true" icon={wallet} />
+          <IonLabel>Panel</IonLabel>
         </IonTabButton>
-        <IonTabButton tab="tab2" href="/tab2">
-          <IonIcon aria-hidden="true" icon={ellipse} />
-          <IonLabel>Tab 2</IonLabel>
+        <IonTabButton tab="movimientos" href="/movimientos">
+          <IonIcon aria-hidden="true" icon={list} />
+          <IonLabel>Movimientos</IonLabel>
         </IonTabButton>
-        <IonTabButton tab="tab3" href="/tab3">
-          <IonIcon aria-hidden="true" icon={square} />
-          <IonLabel>Tab 3</IonLabel>
+        <IonTabButton tab="cuentas" href="/cuentas">
+          <IonIcon aria-hidden="true" icon={card} />
+          <IonLabel>Cuentas</IonLabel>
         </IonTabButton>
       </IonTabBar>
     </IonTabs>
