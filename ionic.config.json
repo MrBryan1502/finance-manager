@@ -1,0 +1,7 @@
+{
+  "name": "finance_manager",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react-vite"
+}
