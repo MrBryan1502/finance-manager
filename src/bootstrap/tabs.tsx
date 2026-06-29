@@ -13,6 +13,7 @@ import { ListaMovimientos } from '../modulos/movimientos/presentacion/paginas/li
 import { RegistrarMovimientoPage } from '../modulos/movimientos/presentacion/paginas/registrar-movimiento'
 import { ListaCuentas } from '../modulos/cuentas/presentacion/paginas/lista-cuentas'
 import { CrearCuentaPage } from '../modulos/cuentas/presentacion/paginas/crear-cuenta'
+import { DetalleCuentaPage } from '../modulos/cuentas/presentacion/paginas/detalle-cuenta'
 
 export default function Tabs() {
   return (
@@ -27,11 +28,17 @@ export default function Tabs() {
         <Route exact path="/movimientos/registrar">
           <RegistrarMovimientoPage />
         </Route>
+        <Route exact path="/movimientos/editar/:id">
+          <RegistrarMovimientoPage />
+        </Route>
         <Route exact path="/cuentas">
           <ListaCuentas />
         </Route>
         <Route exact path="/cuentas/crear">
           <CrearCuentaPage />
+        </Route>
+        <Route exact path="/cuentas/:id/detalle">
+          <DetalleCuentaPage />
         </Route>
         <Route exact path="/">
           <Redirect to="/panel" />

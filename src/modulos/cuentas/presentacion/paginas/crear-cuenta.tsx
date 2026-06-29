@@ -14,7 +14,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { CrearCuenta } from '../../aplicacion/casos-de-uso/crear-cuenta'
 import { RepositorioCuentas } from '../../infraestructura/persistencia/repositorio-cuentas'
-import { ArrowLeft, Wallet, CreditCard, Landmark } from 'lucide-react'
+import { ArrowLeft, Wallet, CreditCard, Landmark, CreditCard as CreditoIcon } from 'lucide-react'
 
 const repositorio = new RepositorioCuentas()
 const crearCuenta = new CrearCuenta(repositorio)
@@ -23,6 +23,9 @@ export function CrearCuentaPage() {
   const [nombre, setNombre] = useState('')
   const [saldo, setSaldo] = useState('')
   const [tipo, setTipo] = useState('efectivo')
+  const [limiteCredito, setLimiteCredito] = useState('')
+  const [diaCorte, setDiaCorte] = useState('')
+  const [diaPago, setDiaPago] = useState('')
   const [exito, setExito] = useState(false)
   const history = useHistory()
 
@@ -31,6 +34,9 @@ export function CrearCuentaPage() {
       nombre,
       saldo: parseFloat(saldo) || 0,
       tipo,
+      limiteCredito: tipo === 'credito' ? parseFloat(limiteCredito) || 0 : undefined,
+      diaCorte: tipo === 'credito' ? parseInt(diaCorte) || undefined : undefined,
+      diaPago: tipo === 'credito' ? parseInt(diaPago) || undefined : undefined,
     })
     setExito(true)
     setTimeout(() => history.goBack(), 1500)
@@ -95,6 +101,7 @@ export function CrearCuentaPage() {
                 <Tab value="efectivo" label="Efectivo" icon={<Wallet size={18} />} />
                 <Tab value="debito" label="Débito" icon={<CreditCard size={18} />} />
                 <Tab value="ahorro" label="Ahorro" icon={<Landmark size={18} />} />
+                <Tab value="credito" label="Crédito" icon={<CreditoIcon size={18} />} />
               </Tabs>
             </CardContent>
           </Card>
@@ -116,7 +123,7 @@ export function CrearCuentaPage() {
               <Divider />
 
               <TextField
-                label="Saldo inicial"
+                label={tipo === 'credito' ? 'Deuda actual' : 'Saldo inicial'}
                 type="number"
                 inputMode="decimal"
                 placeholder="0.00"
@@ -129,6 +136,57 @@ export function CrearCuentaPage() {
                 }}
                 fullWidth
               />
+
+              {tipo === 'credito' && (
+                <>
+                  <TextField
+                    label="Límite de crédito"
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={limiteCredito}
+                    onChange={(e) => setLimiteCredito(e.target.value)}
+                    slotProps={{
+                      htmlInput: {
+                        sx: { textAlign: 'center', fontSize: '1.125rem', fontWeight: 600 },
+                      },
+                    }}
+                    fullWidth
+                  />
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    <TextField
+                      label="Día de corte"
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="15"
+                      value={diaCorte}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                        setDiaCorte(v)
+                      }}
+                      slotProps={{
+                        htmlInput: { min: 1, max: 31, sx: { textAlign: 'center' } },
+                      }}
+                      fullWidth
+                    />
+                    <TextField
+                      label="Día de pago"
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="20"
+                      value={diaPago}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, '').slice(0, 2)
+                        setDiaPago(v)
+                      }}
+                      slotProps={{
+                        htmlInput: { min: 1, max: 31, sx: { textAlign: 'center' } },
+                      }}
+                      fullWidth
+                    />
+                  </Box>
+                </>
+              )}
 
               <Button
                 variant="contained"

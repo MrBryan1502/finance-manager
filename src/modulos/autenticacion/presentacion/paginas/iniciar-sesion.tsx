@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { IonContent, IonPage } from '@ionic/react'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
@@ -9,12 +9,47 @@ import Alert from '@mui/material/Alert'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 import Avatar from '@mui/material/Avatar'
+import Switch from '@mui/material/Switch'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Divider from '@mui/material/Divider'
 import { useAutenticacion } from '../hooks/use-autenticacion'
-import { Wallet } from 'lucide-react'
+import { ServicioBiometria, TipoBiometria } from '../../infraestructura/servicios/servicio-biometria'
+import { Wallet, Fingerprint, ScanFace } from 'lucide-react'
+
+const servicioBiometria = new ServicioBiometria()
 
 export function IniciarSesion() {
   const [pin, setPin] = useState('')
-  const { iniciarSesion, error, limpiarError } = useAutenticacion()
+  const { iniciarSesion, iniciarSesionConBiometria, error, limpiarError } = useAutenticacion()
+  const [biometriaDisponible, setBiometriaDisponible] = useState(false)
+  const [tipoBiometria, setTipoBiometria] = useState<TipoBiometria>('none')
+  const [biometriaHabilitada, setBiometriaHabilitada] = useState(false)
+  const [autenticandoBiometria, setAutenticandoBiometria] = useState(false)
+
+  useEffect(() => {
+    servicioBiometria.verificarDisponibilidad().then((result) => {
+      setBiometriaDisponible(result.disponible)
+      setTipoBiometria(result.tipo)
+      setBiometriaHabilitada(servicioBiometria.estaHabilitado())
+    })
+  }, [])
+
+  useEffect(() => {
+    if (biometriaHabilitada && biometriaDisponible) {
+      intentarAutenticacionBiometrica()
+    }
+  }, [biometriaHabilitada, biometriaDisponible])
+
+  async function intentarAutenticacionBiometrica() {
+    setAutenticandoBiometria(true)
+    const exito = await servicioBiometria.autenticar()
+    if (exito) {
+      iniciarSesionConBiometria()
+      setAutenticandoBiometria(false)
+    } else {
+      setAutenticandoBiometria(false)
+    }
+  }
 
   function manejarCambioPin(valor: string) {
     const digitos = valor.replace(/\D/g, '').slice(0, 6)
@@ -24,7 +59,23 @@ export function IniciarSesion() {
 
   function manejarEnvio() {
     iniciarSesion(pin)
+    if (biometriaDisponible && !biometriaHabilitada) {
+      servicioBiometria.habilitar()
+      setBiometriaHabilitada(true)
+    }
   }
+
+  function toggleBiometria() {
+    if (biometriaHabilitada) {
+      servicioBiometria.deshabilitar()
+      setBiometriaHabilitada(false)
+    } else {
+      servicioBiometria.habilitar()
+      setBiometriaHabilitada(true)
+    }
+  }
+
+  const etiquetaBiometria = tipoBiometria === 'face' ? 'Face ID / Rostro' : 'Huella digital'
 
   return (
     <IonPage>
@@ -79,17 +130,13 @@ export function IniciarSesion() {
                 height: 64,
                 borderRadius: 3,
                 bgcolor: 'primary.main',
-                boxShadow: (theme) =>
-                  `0 4px 14px 0 ${theme.palette.primary.main}33`,
+                boxShadow: (theme) => `0 4px 14px 0 ${theme.palette.primary.main}33`,
               }}
             >
               <Wallet size={32} />
             </Avatar>
             <Box sx={{ textAlign: 'center' }}>
-              <Typography
-                variant="h5"
-                sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}
-              >
+              <Typography variant="h5" sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
                 Finance Manager
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -141,6 +188,44 @@ export function IniciarSesion() {
               >
                 Ingresar
               </Button>
+
+              {biometriaDisponible && (
+                <>
+                  <Divider sx={{ my: 0.5 }}>
+                    <Typography variant="caption" color="text.disabled">
+                      o
+                    </Typography>
+                  </Divider>
+
+                  <Button
+                    variant="outlined"
+                    size="large"
+                    disabled={autenticandoBiometria}
+                    onClick={intentarAutenticacionBiometrica}
+                    fullWidth
+                    sx={{ gap: 1 }}
+                  >
+                    {tipoBiometria === 'face' ? <ScanFace size={20} /> : <Fingerprint size={20} />}
+                    {autenticandoBiometria ? 'Autenticando...' : `Ingresar con ${etiquetaBiometria}`}
+                  </Button>
+
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        size="small"
+                        checked={biometriaHabilitada}
+                        onChange={toggleBiometria}
+                      />
+                    }
+                    label={
+                      <Typography variant="caption">
+                        Inicio automático con {etiquetaBiometria}
+                      </Typography>
+                    }
+                    sx={{ mx: 0, justifyContent: 'center' }}
+                  />
+                </>
+              )}
             </CardContent>
           </Card>
         </Box>

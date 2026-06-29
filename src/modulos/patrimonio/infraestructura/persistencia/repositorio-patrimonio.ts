@@ -15,8 +15,12 @@ export class RepositorioPatrimonio implements IRepositorioPatrimonio {
     const cuentas = repositorioCuentas.listar()
     const movimientos = repositorioMovimientos.listar()
 
-    const activos = cuentas.reduce((sum, c) => sum + c.saldo, 0)
-    const pasivos = 0
+    const activos = cuentas
+      .filter((c) => c.tipo !== 'credito')
+      .reduce((sum, c) => sum + c.saldo, 0)
+    const pasivos = cuentas
+      .filter((c) => c.tipo === 'credito')
+      .reduce((sum, c) => sum + c.saldo, 0)
     const ingresos = movimientos
       .filter((m) => m.tipo === TipoMovimiento.INGRESO)
       .reduce((sum, m) => sum + m.monto, 0)

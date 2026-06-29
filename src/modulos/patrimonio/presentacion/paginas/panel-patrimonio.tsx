@@ -3,6 +3,8 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CardHeader from '@mui/material/CardHeader'
 import Button from '@mui/material/Button'
+import TextField from '@mui/material/TextField'
+import Chip from '@mui/material/Chip'
 import Divider from '@mui/material/Divider'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
@@ -14,6 +16,10 @@ import { ResumenPatrimonioDTO } from '../../aplicacion/dto/resumen-patrimonio-dt
 import { ListarMovimientos } from '../../../movimientos/aplicacion/casos-de-uso/listar-movimientos'
 import { RepositorioMovimientos } from '../../../movimientos/infraestructura/persistencia/repositorio-movimientos'
 import { Movimiento } from '../../../movimientos/dominio/entidades/movimiento'
+import { RepositorioCuentas } from '../../../cuentas/infraestructura/persistencia/repositorio-cuentas'
+import { RepositorioComprasPlazo } from '../../../cuentas/infraestructura/persistencia/repositorio-compras-plazo'
+import { ListarComprasPlazo } from '../../../cuentas/aplicacion/casos-de-uso/listar-compras-plazo'
+import { Cuenta } from '../../../cuentas/dominio/entidades/cuenta'
 import {
   Wallet,
   TrendingUp,
@@ -26,10 +32,14 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
+const CLAVE_INGRESO = 'ingreso_quincenal'
 const repositorioPatrimonio = new RepositorioPatrimonio()
 const obtenerPatrimonio = new ObtenerPatrimonio(repositorioPatrimonio)
 const repositorioMovimientos = new RepositorioMovimientos()
 const listarMovimientos = new ListarMovimientos(repositorioMovimientos)
+const repositorioCuentas = new RepositorioCuentas()
+const repositorioCompras = new RepositorioComprasPlazo()
+const listarCompras = new ListarComprasPlazo(repositorioCompras)
 
 function formatear(valor: number): string {
   return new Intl.NumberFormat('es-MX', {
@@ -45,6 +55,88 @@ function formatearFecha(iso: string): string {
   }).format(new Date(iso))
 }
 
+function formatearDiaMes(dia: number, mes: number, anio: number): string {
+  return new Date(anio, mes, dia).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+}
+
+function calcularPagoMensual(cuentaId: string): number {
+  const compras = listarCompras.ejecutar(cuentaId)
+  return compras.reduce((sum, c) => sum + Math.round((c.montoTotal / c.mesesTotales) * 100) / 100, 0)
+}
+
+function cargarIngresoQuincenal(): number {
+  const valor = localStorage.getItem(CLAVE_INGRESO)
+  return valor ? parseFloat(valor) : 0
+}
+
+function guardarIngresoQuincenal(valor: number): void {
+  localStorage.setItem(CLAVE_INGRESO, JSON.stringify(valor))
+}
+
+function obtenerUltimoDiaMes(anio: number, mes: number): number {
+  return new Date(anio, mes + 1, 0).getDate()
+}
+
+interface ProximaQuincena {
+  etiqueta: string
+  dia: number
+  mes: number
+  anio: number
+  ingresos: number
+  egresos: number
+  patrimonio: number
+}
+
+function calcularProximaQuincena(
+  patrimonioActual: number,
+  ingresoQuincenal: number,
+  cuentasCredito: Cuenta[]
+): ProximaQuincena | null {
+  const hoy = new Date()
+  const anio = hoy.getFullYear()
+  const mes = hoy.getMonth()
+  const dia = hoy.getDate()
+
+  let qDia: number, qMes: number, qAnio: number
+  let periodoInicio: number, periodoFin: number
+
+  const ultimoDia = obtenerUltimoDiaMes(anio, mes)
+
+  if (dia <= 15) {
+    qDia = 15; qMes = mes; qAnio = anio
+    periodoInicio = 1; periodoFin = 15
+  } else if (dia <= ultimoDia) {
+    qDia = ultimoDia; qMes = mes; qAnio = anio
+    periodoInicio = 16; periodoFin = ultimoDia
+  } else {
+    const mesSiguiente = mes + 1
+    const a = mesSiguiente > 11 ? anio + 1 : anio
+    const m = mesSiguiente > 11 ? 0 : mesSiguiente
+    qDia = 15; qMes = m; qAnio = a
+    periodoInicio = 1; periodoFin = 15
+  }
+
+  let egresos = 0
+  for (const c of cuentasCredito) {
+    if (c.diaPago === undefined) continue
+    if (c.diaPago >= periodoInicio && c.diaPago <= periodoFin) {
+      egresos += calcularPagoMensual(c.id)
+    }
+  }
+
+  const patrimonioProyectado = patrimonioActual + ingresoQuincenal - egresos
+
+  return {
+    etiqueta: qDia <= 15 ? `Próxima quincena ${formatearDiaMes(qDia, qMes, qAnio)}` : `Fin de mes ${formatearDiaMes(qDia, qMes, qAnio)}`,
+    dia: qDia,
+    mes: qMes,
+    anio: qAnio,
+    ingresos: ingresoQuincenal,
+    egresos,
+    patrimonio: patrimonioProyectado,
+  }
+}
+
 export function PanelPatrimonio() {
   const [resumen, setResumen] = useState<ResumenPatrimonioDTO>({
     activos: 0,
@@ -54,7 +146,14 @@ export function PanelPatrimonio() {
     gastos: 0,
   })
   const [movimientosRecientes, setMovimientosRecientes] = useState<Movimiento[]>([])
+  const [ingresoQuincenal, setIngresoQuincenal] = useState(cargarIngresoQuincenal)
+  const [editandoIngreso, setEditandoIngreso] = useState(false)
   const history = useHistory()
+
+  const cuentasCredito = repositorioCuentas.listar().filter((c) => c.tipo === 'credito')
+  const proyeccion = resumen.patrimonio !== 0 || resumen.activos !== 0 || resumen.pasivos !== 0
+    ? calcularProximaQuincena(resumen.patrimonio, ingresoQuincenal, cuentasCredito)
+    : null
 
   function cargarDatos() {
     setResumen(obtenerPatrimonio.ejecutar())
@@ -271,6 +370,95 @@ export function PanelPatrimonio() {
               </Box>
             </CardContent>
           </Card>
+
+          <Card sx={{ mb: 3 }}>
+            <CardHeader
+              title="Ingreso quincenal"
+              slotProps={{ title: { variant: 'subtitle2' as const } }}
+            />
+            <CardContent>
+              {editandoIngreso ? (
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <TextField
+                    type="number"
+                    inputMode="decimal"
+                    size="small"
+                    value={ingresoQuincenal || ''}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value) || 0
+                      setIngresoQuincenal(v)
+                      guardarIngresoQuincenal(v)
+                    }}
+                    placeholder="0.00"
+                    sx={{ flex: 1 }}
+                  />
+                  <Button size="small" variant="text" onClick={() => setEditandoIngreso(false)}>
+                    Listo
+                  </Button>
+                </Box>
+              ) : (
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#10b981' }}>
+                    {formatear(ingresoQuincenal)}
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1, fontWeight: 400 }}>
+                      / quincena
+                    </Typography>
+                  </Typography>
+                  <Button size="small" variant="text" sx={{ fontSize: '0.75rem' }} onClick={() => setEditandoIngreso(true)}>
+                    Editar
+                  </Button>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+
+          {proyeccion && (
+            <Card sx={{ mb: 3, borderLeft: '4px solid', borderColor: proyeccion.patrimonio >= 0 ? '#10b981' : '#f43f5e' }}>
+              <CardHeader
+                title={proyeccion.etiqueta}
+                slotProps={{ title: { variant: 'subtitle2' as const } }}
+              />
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 1 }}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Patrimonio proyectado
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 700, color: proyeccion.patrimonio >= 0 ? '#10b981' : '#f43f5e' }}>
+                      {formatear(proyeccion.patrimonio)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Typography variant="caption" color="#10b981" sx={{ display: 'block' }}>
+                      +{formatear(proyeccion.ingresos)} ingreso
+                    </Typography>
+                    <Typography variant="caption" color="#f43f5e" sx={{ display: 'block' }}>
+                      -{formatear(proyeccion.egresos)} pagos
+                    </Typography>
+                  </Box>
+                </Box>
+                {proyeccion.egresos > 0 && (
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1.5, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+                    {cuentasCredito
+                      .filter((c) => c.diaPago !== undefined)
+                      .map((c) => {
+                        const pago = calcularPagoMensual(c.id)
+                        if (pago === 0) return null
+                        return (
+                          <Chip
+                            key={c.id}
+                            label={`${c.nombre}: ${formatear(pago)}`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ height: 22, fontSize: '0.65rem', borderColor: '#f43f5e40', color: '#f43f5e' }}
+                          />
+                        )
+                      })}
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <Box>
             <Box

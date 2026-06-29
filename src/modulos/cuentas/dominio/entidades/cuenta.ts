@@ -3,4 +3,7 @@ export interface Cuenta {
   nombre: string
   saldo: number
   tipo: string
+  limiteCredito?: number
+  diaCorte?: number
+  diaPago?: number
 }

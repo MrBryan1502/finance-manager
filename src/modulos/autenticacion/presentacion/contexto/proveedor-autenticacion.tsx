@@ -13,6 +13,7 @@ export interface ContextoAutenticacion {
   sesionIniciada: boolean
   pinConfigurado: boolean
   iniciarSesion: (pin: string) => void
+  iniciarSesionConBiometria: () => void
   configurarPin: (pin: string) => void
   cerrarSesion: () => void
   error: string | null
@@ -30,6 +31,7 @@ export const ContextoAutenticacion = createContext<ContextoAutenticacion>({
   sesionIniciada: false,
   pinConfigurado: estadoInicial.pinConfigurado,
   iniciarSesion: () => {},
+  iniciarSesionConBiometria: () => {},
   configurarPin: () => {},
   cerrarSesion: () => {},
   error: null,
@@ -74,6 +76,11 @@ export function ProveedorAutenticacion({
     }
   }, [])
 
+  const iniciarSesionConBiometria = useCallback(() => {
+    setSesionIniciada(true)
+    setError(null)
+  }, [])
+
   const cerrarSesion = useCallback(() => {
     setSesionIniciada(false)
     setError(null)
@@ -88,12 +95,13 @@ export function ProveedorAutenticacion({
       sesionIniciada,
       pinConfigurado,
       iniciarSesion,
+      iniciarSesionConBiometria,
       configurarPin,
       cerrarSesion,
       error,
       limpiarError,
     }),
-    [sesionIniciada, pinConfigurado, iniciarSesion, configurarPin, cerrarSesion, error, limpiarError]
+    [sesionIniciada, pinConfigurado, iniciarSesion, iniciarSesionConBiometria, configurarPin, cerrarSesion, error, limpiarError]
   )
 
   return (
